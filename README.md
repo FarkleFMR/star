@@ -1,0 +1,2 @@
+# star
+No es estrella
