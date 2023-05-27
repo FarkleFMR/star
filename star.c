@@ -239,6 +239,32 @@ int updateArchive(const char* archiveName, const char* fileList[], int fileCount
     return 0;
 }
 
+int packFromInput(const char* archiveName) {
+    // Pack contents from standard input into an archive
+    FILE* archive = fopen(archiveName, "wb");
+    if (archive == NULL) {
+        fprintf(stderr, "Error opening archive\n");
+        return 1;
+    }
+
+    int fileCount = 0;
+    fwrite(&fileCount, sizeof(int), 1, archive); // Write initial file count as 0
+
+    char inputBuffer[BLOCK_SIZE * 1024];
+    size_t bytesRead;
+
+    while ((bytesRead = fread(inputBuffer, sizeof(char), BLOCK_SIZE * 1024, stdin)) > 0) {
+        Block block;
+        block.next_block = -1;
+        memcpy(block.data, inputBuffer, bytesRead);
+
+        fwrite(&block, sizeof(Block), 1, archive);
+    }
+
+    fclose(archive);
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <options>\n", argv[0]);
@@ -273,6 +299,13 @@ int main(int argc, char* argv[]) {
         int fileCount = argc - 3;
         const char** fileList = (const char**)&argv[3];
         return updateArchive(argv[2], fileList, fileCount);
+    } else if (strcmp(option, "-f") == 0 || strcmp(option, "--file") == 0) {
+        if (argc < 3) {
+            fprintf(stderr, "Usage: %s -f <archive_name>\n", argv[0]);
+            return 1;
+        }
+
+        return packFromInput(argv[2]);
     } else {
         fprintf(stderr, "Invalid option\n");
         return 1;
