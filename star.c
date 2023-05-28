@@ -162,75 +162,32 @@ int updateArchive(const char* archiveName, const char* fileNames[], int fileCoun
 }
 
 
-int packFromInput(const char* archiveName) {
-    // Pack contents from standard input into an archive
-    FILE* archive = fopen(archiveName, "wb");
-    if (archive == NULL) {
-        fprintf(stderr, "Error opening archive\n");
-        return 1;
-    }
-
-    int fileCount = 0;
-    fwrite(&fileCount, sizeof(int), 1, archive); // Write initial file count as 0
-
-    char inputBuffer[BLOCK_SIZE * 1024];
-    size_t bytesRead;
-
-    while ((bytesRead = fread(inputBuffer, sizeof(char), BLOCK_SIZE * 1024, stdin)) > 0) {
-        Block block;
-        block.next_block = -1;
-        memcpy(block.data, inputBuffer, bytesRead);
-
-        fwrite(&block, sizeof(Block), 1, archive);
-    }
-
-    fclose(archive);
-    return 0;
-}
-
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <options>\n", argv[0]);
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <command> <-f|--file> <archive_name> [files]\n", argv[0]);
         return 1;
     }
 
-    const char* option = argv[1];
+    const char* command = argv[1];
+    const char* option = argv[2];
+    const char* archiveName = argv[3];
+    const char** fileList = (const char**)&argv[4];
+    int fileCount = argc - 4;
 
-    if (strcmp(option, "-c") == 0 || strcmp(option, "--create") == 0) {
-        if (argc < 4) {
-            fprintf(stderr, "Usage: %s -c <archive_name> <file1> <file2> ... <fileN>\n", argv[0]);
-            return 1;
-        }
+    if (strcmp(option, "-f") != 0 && strcmp(option, "--file") != 0) {
+        fprintf(stderr, "Error: Missing -f or --file option\n");
+        return 1;
+    }
 
+    if (strcmp(command, "-c") == 0 || strcmp(command, "--create") == 0) {
         initializeFAT();
-        int fileCount = argc - 3;
-        const char** fileList = (const char**)&argv[3];
-        return createArchive(argv[2], fileList, fileCount);
-    } else if (strcmp(option, "-t") == 0 || strcmp(option, "--list") == 0) {
-        if (argc < 3) {
-            fprintf(stderr, "Usage: %s -t <archive_name>\n", argv[0]);
-            return 1;
-        }
-
-        return listArchive(argv[2]);
-    } else if (strcmp(option, "-u") == 0 || strcmp(option, "--update") == 0) {
-        if (argc < 4) {
-            fprintf(stderr, "Usage: %s -u <archive_name> <file1> <file2> ... <fileN>\n", argv[0]);
-            return 1;
-        }
-
-        int fileCount = argc - 3;
-        const char** fileList = (const char**)&argv[3];
-        return updateArchive(argv[2], fileList, fileCount);
-    } else if (strcmp(option, "-f") == 0 || strcmp(option, "--file") == 0) {
-        if (argc < 3) {
-            fprintf(stderr, "Usage: %s -f <archive_name>\n", argv[0]);
-            return 1;
-        }
-
-        return packFromInput(argv[2]);
+        return createArchive(archiveName, fileList, fileCount);
+    } else if (strcmp(command, "-t") == 0 || strcmp(command, "--list") == 0) {
+        return listArchive(archiveName);
+    } else if (strcmp(command, "-u") == 0 || strcmp(command, "--update") == 0) {
+        return updateArchive(archiveName, fileList, fileCount);
     } else {
-        fprintf(stderr, "Invalid option\n");
+        fprintf(stderr, "Invalid command: %s\n", command);
         return 1;
     }
 
