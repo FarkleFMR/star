@@ -3,33 +3,33 @@
 #include <string.h>
 #include <unistd.h>
 
-#define BLOCK_SIZE 32 // Block size in KB
-#define MAX_FILE_NAME_LENGTH 256 // Maximum file name length
+#define BLOCK_SIZE 32 // Tamaño de bloque en KB
+#define MAX_FILE_NAME_LENGTH 256 // Longitud máxima del nombre de archivo
 
-#define TABLE_SIZE 100 // Maximum size of the FAT table
-#define MAX_FILE_COUNT 100 // Maximum number of files in an archive
+#define TABLE_SIZE 100 // Tamaño máximo de la tabla FAT
+#define MAX_FILE_COUNT 100 // Número máximo de archivos en un archivo de almacenamiento
 
 typedef struct {
-    int next_block; // Bloque siguiente
+    int next_block; // Siguiente bloque
     char filename[256]; // Nombre del archivo
     char data[BLOCK_SIZE * 1024]; // Datos del bloque
 } Block;
 
 typedef struct {
-    int allocated; // Indicates if the block is allocated (1) or free (0)
-    Block block; // Data block
+    int allocated; // Indica si el bloque está asignado (1) o libre (0)
+    Block block; // Bloque de datos
 } FATEntry;
 
 typedef struct {
-    FATEntry entries[TABLE_SIZE]; // FAT table
-    int free_blocks[TABLE_SIZE]; // Indices of free blocks
-    int free_blocks_count; // Number of free blocks
+    FATEntry entries[TABLE_SIZE]; // Tabla FAT
+    int free_blocks[TABLE_SIZE]; // Índices de bloques libres
+    int free_blocks_count; // Número de bloques libres
 } FATTable;
 
-FATTable fatTable; // Global FAT table
+FATTable fatTable; // Tabla FAT global
 
 void initializeFAT() {
-    // Initialize the FAT table
+    // Inicializa la tabla FAT
     for (int i = 0; i < TABLE_SIZE; i++) {
         fatTable.entries[i].allocated = 0;
         fatTable.entries[i].block.next_block = -1;
@@ -43,31 +43,32 @@ void initializeFAT() {
 
 
 int getFreeBlock() {
-    // Get a free block from the FAT table
+    // Obtiene un bloque libre de la tabla FAT
     if (fatTable.free_blocks_count == 0) {
-        return -1; // No free blocks available
+        return -1; // No hay bloques libres disponibles
     }
 
     int freeBlockIndex = fatTable.free_blocks[--fatTable.free_blocks_count];
-    fatTable.entries[freeBlockIndex].allocated = 1; // Mark the block as allocated
+    fatTable.entries[freeBlockIndex].allocated = 1; // Marca el bloque como asignado
     return freeBlockIndex;
 }
 
 void releaseBlock(int blockIndex) {
-    // Release a block and mark it as free in the FAT table
-    fatTable.entries[blockIndex].allocated = 0; // Mark the block as free
+    // Libera un bloque y lo marca como libre en la tabla FAT
+    fatTable.entries[blockIndex].allocated = 0; // Marca el bloque como libre
     fatTable.free_blocks[fatTable.free_blocks_count++] = blockIndex;
 }
 
 
 int createArchive(const char* archiveName, const char* fileNames[], int fileCount) {
+    // Crea un archivo de almacenamiento y guarda los archivos proporcionados en él
     FILE* archive = fopen(archiveName, "wb");
     if (archive == NULL) {
         fprintf(stderr, "Error creating archive\n");
         return 1;
     }
 
-    fwrite(&fileCount, sizeof(int), 1, archive); // Write the file count
+    fwrite(&fileCount, sizeof(int), 1, archive); // Escribe la cantidad de archivos
 
     for (int i = 0; i < fileCount; i++) {
         FILE* file = fopen(fileNames[i], "rb");
@@ -78,7 +79,7 @@ int createArchive(const char* archiveName, const char* fileNames[], int fileCoun
         }
 
         Block block;
-        strcpy(block.filename, fileNames[i]); // Copy the file name
+        strcpy(block.filename, fileNames[i]); // Copia el nombre del archivo
         size_t bytesRead = fread(block.data, sizeof(char), sizeof(block.data), file);
         block.next_block = -1;
 
@@ -92,6 +93,7 @@ int createArchive(const char* archiveName, const char* fileNames[], int fileCoun
 }
 
 int listArchive(const char* archiveName) {
+    // Lista el contenido del archivo de almacenamiento
     FILE* archive = fopen(archiveName, "rb");
     if (archive == NULL) {
         fprintf(stderr, "Error opening archive\n");
@@ -99,7 +101,7 @@ int listArchive(const char* archiveName) {
     }
 
     int fileCount;
-    fread(&fileCount, sizeof(int), 1, archive); // Read the file count
+    fread(&fileCount, sizeof(int), 1, archive); // Lee la cantidad de archivos
 
     printf("Archive Contents:\n");
 
@@ -118,22 +120,23 @@ int listArchive(const char* archiveName) {
 
 
 int updateArchive(const char* archiveName, const char* fileNames[], int fileCount) {
+    // Actualiza el archivo de almacenamiento agregando los archivos proporcionados
     FILE* archive = fopen(archiveName, "r+b");
     if (archive == NULL) {
         fprintf(stderr, "Error opening archive\n");
         return 1;
     }
 
-    // Read the existing file count
+    // Lee la cantidad de archivos existente
     int existingFileCount;
     fread(&existingFileCount, sizeof(int), 1, archive);
 
-    // Update the file count in the archive
+    // Actualiza la cantidad de archivos en el archivo
     fseek(archive, 0, SEEK_SET);
     int newFileCount = existingFileCount + fileCount;
     fwrite(&newFileCount, sizeof(int), 1, archive);
 
-    // Seek to the end of the archive
+    // Busca el final del archivo
     fseek(archive, 0, SEEK_END);
 
     for (int i = 0; i < fileCount; i++) {
@@ -145,7 +148,7 @@ int updateArchive(const char* archiveName, const char* fileNames[], int fileCoun
         }
 
         Block block;
-        strcpy(block.filename, fileNames[i]); // Copy the file name
+        strcpy(block.filename, fileNames[i]);  // Copia el nombre del archivo
         size_t bytesRead = fread(block.data, sizeof(char), sizeof(block.data), file);
         block.next_block = -1;
 
